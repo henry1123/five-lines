@@ -48,20 +48,35 @@ function moveToTile(newx: number, newy: number) {
   playery = newy;
 }
 
-function moveHorizontal(dx: number) {
-  if (map[playery][playerx + dx] === Tile.FLUX
-    || map[playery][playerx + dx] === Tile.AIR) {
-    moveToTile(playerx + dx, playery);
-  } else if ((map[playery][playerx + dx] === Tile.STONE
+function isFLUXorAIR(dx: number) {
+  return (map[playery][playerx + dx] === Tile.FLUX
+    || map[playery][playerx + dx] === Tile.AIR);
+}
+
+function isSTONEorBOXandAIR(dx: number) {
+  return (map[playery][playerx + dx] === Tile.STONE
     || map[playery][playerx + dx] === Tile.BOX)
     && map[playery][playerx + dx + dx] === Tile.AIR
-    && map[playery + 1][playerx + dx] !== Tile.AIR) {
+    && map[playery + 1][playerx + dx] !== Tile.AIR;
+}
+
+function isKEY1(dx: number) {
+  return map[playery][playerx + dx] === Tile.KEY1;
+}
+
+function isKEY2(dx: number) {
+  return map[playery][playerx + dx] === Tile.KEY2;
+}
+function moveHorizontal(dx: number) {
+  if (isFLUXorAIR(dx)) {
+    moveToTile(playerx + dx, playery);
+  } else if (isSTONEorBOXandAIR(dx)) {
     map[playery][playerx + dx + dx] = map[playery][playerx + dx];
     moveToTile(playerx + dx, playery);
-  } else if (map[playery][playerx + dx] === Tile.KEY1) {
+  } else if (isKEY1(dx)) {
     remove(Tile.LOCK1);
     moveToTile(playerx + dx, playery);
-  } else if (map[playery][playerx + dx] === Tile.KEY2) {
+  } else if (isKEY2(dx)) {
     remove(Tile.LOCK2);
     moveToTile(playerx + dx, playery);
   }
@@ -80,7 +95,7 @@ function moveVertical(dy: number) {
   }
 }
 
-function update() {
+function processInputs() {
   while (inputs.length > 0) {
     let current = inputs.pop();
     if (current === Input.LEFT)
@@ -92,32 +107,38 @@ function update() {
     else if (current === Input.DOWN)
       moveVertical(1);
   }
+}
 
+function drawBlock(x: number, y: number) {
+  if ((map[y][x] === Tile.STONE || map[y][x] === Tile.FALLING_STONE)
+  && map[y + 1][x] === Tile.AIR) {
+  map[y + 1][x] = Tile.FALLING_STONE;
+  map[y][x] = Tile.AIR;
+} else if ((map[y][x] === Tile.BOX || map[y][x] === Tile.FALLING_BOX)
+  && map[y + 1][x] === Tile.AIR) {
+  map[y + 1][x] = Tile.FALLING_BOX;
+  map[y][x] = Tile.AIR;
+} else if (map[y][x] === Tile.FALLING_STONE) {
+  map[y][x] = Tile.STONE;
+} else if (map[y][x] === Tile.FALLING_BOX) {
+  map[y][x] = Tile.BOX;
+}
+}
+
+function drawAllBlocks(){
   for (let y = map.length - 1; y >= 0; y--) {
     for (let x = 0; x < map[y].length; x++) {
-      if ((map[y][x] === Tile.STONE || map[y][x] === Tile.FALLING_STONE)
-        && map[y + 1][x] === Tile.AIR) {
-        map[y + 1][x] = Tile.FALLING_STONE;
-        map[y][x] = Tile.AIR;
-      } else if ((map[y][x] === Tile.BOX || map[y][x] === Tile.FALLING_BOX)
-        && map[y + 1][x] === Tile.AIR) {
-        map[y + 1][x] = Tile.FALLING_BOX;
-        map[y][x] = Tile.AIR;
-      } else if (map[y][x] === Tile.FALLING_STONE) {
-        map[y][x] = Tile.STONE;
-      } else if (map[y][x] === Tile.FALLING_BOX) {
-        map[y][x] = Tile.BOX;
-      }
+      drawBlock(x, y);
     }
   }
 }
+function update() {
+  processInputs();
+  drawAllBlocks();
+}
 
-function draw() {
-  let canvas = document.getElementById("GameCanvas") as HTMLCanvasElement;
-  let g = canvas.getContext("2d");
 
-  g.clearRect(0, 0, canvas.width, canvas.height);
-
+function drawMap(g: CanvasRenderingContext2D) {
   // Draw map
   for (let y = 0; y < map.length; y++) {
     for (let x = 0; x < map[y].length; x++) {
@@ -138,10 +159,27 @@ function draw() {
         g.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
   }
+}
 
-  // Draw player
-  g.fillStyle = "#ff0000";
-  g.fillRect(playerx * TILE_SIZE, playery * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+function drawPlayer(g: CanvasRenderingContext2D) {
+    // Draw player
+    g.fillStyle = "#ff0000";
+    g.fillRect(playerx * TILE_SIZE, playery * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+}
+
+function clearRect(canvas: HTMLCanvasElement, g: CanvasRenderingContext2D) {
+  g.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function draw() {
+  let canvas = document.getElementById("GameCanvas") as HTMLCanvasElement;
+  let g = canvas.getContext("2d");
+
+  clearRect(canvas, g)
+
+  drawMap(g)
+
+  drawPlayer(g)
 }
 
 function gameLoop() {
